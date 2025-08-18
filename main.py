@@ -108,23 +108,7 @@ def init_database():
         )
     ''')
     
-    # 插入默认茶叶商品
-    default_teas = [
-        ('龙井茶', 100, '绿茶', 50.0, '清香淡雅，回味甘甜'),
-        ('铁观音', 100, '乌龙茶', 45.0, '香气浓郁，滋味醇厚'),
-        ('普洱茶', 100, '黑茶', 60.0, '陈香浓郁，生津止渴'),
-        ('大红袍', 100, '乌龙茶', 80.0, '岩韵明显，香气高长'),
-        ('碧螺春', 100, '绿茶', 55.0, '条索紧结，卷曲如螺'),
-        ('金骏眉', 50, '红茶', 120.0, '香气高锐，滋味鲜爽'),
-        ('银针白毫', 50, '白茶', 90.0, '满披白毫，香气清鲜')
-    ]
-    
-    for tea in default_teas:
-        cursor.execute('''
-            INSERT OR IGNORE INTO tea_store 
-            (tea_name, quantity, tea_type, price, description) 
-            VALUES (?, ?, ?, ?, ?)
-        ''', tea)
+    # 不再插入默认茶叶商品，保持商店为空
     
     conn.commit()
     conn.close()
@@ -326,10 +310,44 @@ class TeaDB:
         self.cursor.execute('SELECT * FROM tea_store')
         return self.cursor.fetchall()
         
+    def get_all_tea_store_with_continuous_id(self):
+        """获取所有茶叶商品，返回连续ID"""
+        self.cursor.execute('SELECT * FROM tea_store ORDER BY id')
+        teas = self.cursor.fetchall()
+        # 创建连续ID映射
+        continuous_teas = []
+        for index, tea in enumerate(teas, 1):
+            # 将数据库实际ID替换为连续ID
+            continuous_tea = (index,) + tea[1:]  # 用连续ID替换实际ID
+            continuous_teas.append(continuous_tea)
+        return continuous_teas
+        
     def get_tea_store_item(self, tea_id):
         """根据ID获取茶叶商品"""
         self.cursor.execute('SELECT * FROM tea_store WHERE id=?', (tea_id,))
         return self.cursor.fetchone()
+        
+    def get_tea_store_item_by_continuous_id(self, continuous_id):
+        """根据连续ID获取茶叶商品"""
+        # 先获取所有商品并按ID排序
+        self.cursor.execute('SELECT * FROM tea_store ORDER BY id')
+        teas = self.cursor.fetchall()
+        # 检查连续ID是否有效
+        if 1 <= continuous_id <= len(teas):
+            # 返回对应的实际商品
+            return teas[continuous_id - 1]
+        return None
+        
+    def get_actual_id_by_continuous_id(self, continuous_id):
+        """根据连续ID获取实际数据库ID"""
+        # 先获取所有商品并按ID排序
+        self.cursor.execute('SELECT id FROM tea_store ORDER BY id')
+        ids = self.cursor.fetchall()
+        # 检查连续ID是否有效
+        if 1 <= continuous_id <= len(ids):
+            # 返回对应的实际ID
+            return ids[continuous_id - 1][0]
+        return None
         
     def add_tea_to_store(self, tea_name, quantity, tea_type, price, description):
         """添加茶叶到商店"""
